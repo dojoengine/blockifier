@@ -85,7 +85,7 @@ impl TryFrom<DeprecatedContractClass> for ContractClassV0 {
 }
 
 // V1.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize)]
 pub struct ContractClassV1(pub Arc<ContractClassV1Inner>);
 impl Deref for ContractClassV1 {
     type Target = ContractClassV1Inner;
@@ -120,13 +120,14 @@ impl ContractClassV1 {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize)]
 pub struct ContractClassV1Inner {
+    #[serde(deserialize_with = "deserialize_program")]
     pub program: Program,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPointV1>>,
     pub hints: HashMap<String, Hint>,
 }
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize)]
 pub struct EntryPointV1 {
     pub selector: EntryPointSelector,
     pub offset: EntryPointOffset,
