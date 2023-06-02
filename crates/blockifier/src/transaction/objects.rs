@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::concat;
+use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 
@@ -21,7 +22,7 @@ pub struct AccountTransactionContext {
 }
 
 /// Contains the information gathered by the execution of a transaction.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TransactionExecutionInfo {
     /// Transaction validation call info; [None] for `L1Handler`.
     pub validate_call_info: Option<CallInfo>,
@@ -58,5 +59,5 @@ impl TransactionExecutionInfo {
 }
 
 /// A mapping from a transaction execution resource to its actual usage.
-#[derive(Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ResourcesMapping(pub HashMap<String, usize>);
