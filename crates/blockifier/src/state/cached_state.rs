@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use derive_more::IntoIterator;
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
@@ -34,7 +35,7 @@ pub type TransactionalState<'a, S> = CachedState<MutRefState<'a, CachedState<S>>
 ///
 /// Writer functionality is builtin, whereas Reader functionality is injected through
 /// initialization.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CachedState<S: StateReader> {
     pub state: S,
     // Invariant: read/write access is managed by CachedState.
@@ -233,7 +234,7 @@ impl From<StorageView> for IndexMap<ContractAddress, IndexMap<StorageKey, StarkF
 /// The tracked changes are needed for block state commitment.
 
 // Invariant: keys cannot be deleted from fields (only used internally by the cached state).
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 struct StateCache {
     // Reader's cached information; initial values, read before any write operation (per cell).
     nonce_initial_values: HashMap<ContractAddress, Nonce>,

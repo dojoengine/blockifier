@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockTimestamp};
 use starknet_api::core::{ChainId, ContractAddress};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockContext {
     pub chain_id: ChainId,
     pub block_number: BlockNumber,
