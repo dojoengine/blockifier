@@ -161,7 +161,6 @@ impl ContractClassV1 {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClassV1Inner {
-    #[serde(deserialize_with = "deserialize_program")]
     pub program: Program,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPointV1>>,
     pub hints: HashMap<String, Hint>,
