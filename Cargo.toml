@@ -47,6 +47,7 @@ strum_macros = "0.24.3"
 tempfile = "3.7.0"
 test-case = "2.2.2"
 thiserror = "1.0.37"
+ecvrf = "0.4.3"
 
 [patch.crates-io]
 cairo-felt = { git = "https://github.com/dojoengine/cairo-rs.git", rev = "262b7eb4b11ab165a2a936a5f914e78aa732d4a2" }

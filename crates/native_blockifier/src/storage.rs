@@ -38,6 +38,7 @@ impl Storage {
             min_size: 1 << 20, // 1MB.
             max_size: config.max_size,
             growth_step: 1 << 26, // 64MB.
+            enforce_file_exists: false,
         };
         let storage_config = papyrus_storage::StorageConfig {
             db_config,
@@ -212,6 +213,7 @@ impl Storage {
             min_size: 1 << 20,    // 1MB
             max_size: 1 << 35,    // 32GB
             growth_step: 1 << 26, // 64MB
+            enforce_file_exists: false,
         };
         let storage_config = papyrus_storage::StorageConfig { db_config, ..Default::default() };
         let (reader, writer) = papyrus_storage::open_storage(storage_config).unwrap();
