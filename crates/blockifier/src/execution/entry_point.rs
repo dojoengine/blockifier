@@ -131,7 +131,7 @@ impl EntryPointExecutionContext {
         account_tx_context: &AccountTransactionContext,
     ) -> usize {
         if account_tx_context.max_fee == Fee(0) {
-            min(constants::MAX_STEPS_PER_TX, block_context.invoke_tx_max_n_steps as usize)
+            block_context.invoke_tx_max_n_steps as usize
         } else {
             let gas_per_step = block_context
                 .vm_resource_fee_cost
