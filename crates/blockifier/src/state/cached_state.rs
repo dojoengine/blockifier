@@ -45,7 +45,7 @@ impl<S: StateReader> CachedState<S> {
     /// Returns the storage changes done through this state.
     /// For each contract instance (address) we have three attributes: (class hash, nonce, storage
     /// root); the state updates correspond to them.
-    pub fn count_actual_state_changes_for_fee_charge(
+    pub fn get_actual_state_changes_for_fee_charge(
         &mut self,
         fee_token_address: ContractAddress,
         sender_address: Option<ContractAddress>,
@@ -250,9 +250,12 @@ impl<S: StateReader> State for CachedState<S> {
         Ok(())
     }
 
-    // Assumes calling to `count_actual_state_changes` before. See its documentation.
-    fn to_state_diff(&self) -> CommitmentStateDiff {
+    fn to_state_diff(&mut self) -> CommitmentStateDiff {
         type StorageDiff = IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>;
+
+        // TODO(Gilad): Consider returning an error here, would require changing the API though.
+        self.update_initial_values_of_write_only_access()
+            .unwrap_or_else(|_| panic!("Cannot convert stateDiff to CommitmentStateDiff."));
 
         let state_cache = &self.cache;
         let class_hash_updates = state_cache.get_class_hash_updates();
@@ -283,7 +286,7 @@ impl Default for CachedState<crate::test_utils::DictStateReader> {
 
 pub type ContractStorageKey = (ContractAddress, StorageKey);
 
-#[derive(IntoIterator, Debug, Default)]
+#[derive(Debug, Default, IntoIterator)]
 pub struct StorageView(pub HashMap<ContractStorageKey, StarkFelt>);
 
 /// Converts a `CachedState`'s storage mapping into a `StateDiff`'s storage mapping.
@@ -498,7 +501,7 @@ impl<'a, S: State + ?Sized> State for MutRefState<'a, S> {
         self.0.set_contract_class(class_hash, contract_class)
     }
 
-    fn to_state_diff(&self) -> CommitmentStateDiff {
+    fn to_state_diff(&mut self) -> CommitmentStateDiff {
         self.0.to_state_diff()
     }
 
@@ -532,7 +535,7 @@ impl<'a, S: StateReader> TransactionalState<'a, S> {
 }
 
 /// Holds uncommitted changes induced on StarkNet contracts.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CommitmentStateDiff {
     // Contract instance attributes (per address).
     pub address_to_class_hash: IndexMap<ContractAddress, ClassHash>,
@@ -552,6 +555,24 @@ pub struct StateChanges {
     pub modified_contracts: HashSet<ContractAddress>,
 }
 
+impl StateChanges {
+    /// Merges the given state changes into a single one. Note that the order of the state changes
+    /// is important. The state changes are merged in the order they appear in the given vector.
+    pub fn merge(state_changes: Vec<Self>) -> Self {
+        let mut merged_state_changes = Self::default();
+        for state_change in state_changes {
+            merged_state_changes.storage_updates.extend(state_change.storage_updates);
+            merged_state_changes.class_hash_updates.extend(state_change.class_hash_updates);
+            merged_state_changes
+                .compiled_class_hash_updates
+                .extend(state_change.compiled_class_hash_updates);
+            merged_state_changes.modified_contracts.extend(state_change.modified_contracts);
+        }
+
+        merged_state_changes
+    }
+}
+
 /// Holds the number of state changes.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct StateChangesCount {
@@ -561,8 +582,8 @@ pub struct StateChangesCount {
     pub n_modified_contracts: usize,
 }
 
-impl From<StateChanges> for StateChangesCount {
-    fn from(state_changes: StateChanges) -> Self {
+impl From<&StateChanges> for StateChangesCount {
+    fn from(state_changes: &StateChanges) -> Self {
         Self {
             n_storage_updates: state_changes.storage_updates.len(),
             n_class_hash_updates: state_changes.class_hash_updates.len(),

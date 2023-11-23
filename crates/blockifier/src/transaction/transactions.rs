@@ -21,9 +21,7 @@ use crate::state::state_api::{State, StateReader};
 use crate::transaction::constants;
 use crate::transaction::errors::TransactionExecutionError;
 use crate::transaction::objects::{TransactionExecutionInfo, TransactionExecutionResult};
-use crate::transaction::transaction_utils::{
-    update_remaining_gas, verify_no_calls_to_other_contracts,
-};
+use crate::transaction::transaction_utils::update_remaining_gas;
 
 #[cfg(test)]
 #[path = "transactions_test.rs"]
@@ -45,11 +43,12 @@ pub trait ExecutableTransaction<S: StateReader>: Sized {
         state: &mut CachedState<S>,
         block_context: &BlockContext,
         charge_fee: bool,
+        validate: bool,
     ) -> TransactionExecutionResult<TransactionExecutionInfo> {
         log::debug!("Executing Transaction...");
         let mut transactional_state = CachedState::create_transactional(state);
         let execution_result =
-            self.execute_raw(&mut transactional_state, block_context, charge_fee);
+            self.execute_raw(&mut transactional_state, block_context, charge_fee, validate);
 
         match execution_result {
             Ok(value) => {
@@ -72,6 +71,7 @@ pub trait ExecutableTransaction<S: StateReader>: Sized {
         state: &mut TransactionalState<'_, S>,
         block_context: &BlockContext,
         charge_fee: bool,
+        validate: bool,
     ) -> TransactionExecutionResult<TransactionExecutionInfo>;
 }
 
@@ -228,7 +228,6 @@ impl<S: State> Executable<S> for DeployAccountTransaction {
         let call_info = deployment_result
             .map_err(TransactionExecutionError::ContractConstructorExecutionFailed)?;
         update_remaining_gas(remaining_gas, &call_info);
-        verify_no_calls_to_other_contracts(&call_info, String::from("an account constructor"))?;
 
         Ok(Some(call_info))
     }

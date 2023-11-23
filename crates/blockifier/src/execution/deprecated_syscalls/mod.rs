@@ -60,6 +60,11 @@ pub enum DeprecatedSyscallSelector {
     Secp256k1GetXy,
     Secp256k1Mul,
     Secp256k1New,
+    Secp256r1Add,
+    Secp256r1GetPointFromX,
+    Secp256r1GetXy,
+    Secp256r1Mul,
+    Secp256r1New,
     SendMessageToL1,
     StorageRead,
     StorageWrite,
@@ -96,6 +101,11 @@ impl TryFrom<StarkFelt> for DeprecatedSyscallSelector {
             b"Secp256k1GetXy" => Ok(Self::Secp256k1GetXy),
             b"Secp256k1Mul" => Ok(Self::Secp256k1Mul),
             b"Secp256k1New" => Ok(Self::Secp256k1New),
+            b"Secp256r1Add" => Ok(Self::Secp256r1Add),
+            b"Secp256r1GetPointFromX" => Ok(Self::Secp256r1GetPointFromX),
+            b"Secp256r1GetXy" => Ok(Self::Secp256r1GetXy),
+            b"Secp256r1Mul" => Ok(Self::Secp256r1Mul),
+            b"Secp256r1New" => Ok(Self::Secp256r1New),
             b"SendMessageToL1" => Ok(Self::SendMessageToL1),
             b"StorageRead" => Ok(Self::StorageRead),
             b"StorageWrite" => Ok(Self::StorageWrite),
@@ -176,6 +186,13 @@ pub fn call_contract(
     syscall_handler: &mut DeprecatedSyscallHintProcessor<'_>,
 ) -> DeprecatedSyscallResult<CallContractResponse> {
     let storage_address = request.contract_address;
+    // Check that the call is legal if in Validate execution mode.
+    if syscall_handler.is_validate_mode() && syscall_handler.storage_address != storage_address {
+        return Err(DeprecatedSyscallExecutionError::InvalidSyscallInExecutionMode {
+            syscall_name: "call_contract".to_string(),
+            execution_mode: syscall_handler.execution_mode(),
+        });
+    }
     let entry_point = CallEntryPoint {
         class_hash: None,
         code_address: Some(storage_address),
@@ -380,6 +397,7 @@ pub fn get_block_number(
     _vm: &mut VirtualMachine,
     syscall_handler: &mut DeprecatedSyscallHintProcessor<'_>,
 ) -> DeprecatedSyscallResult<GetBlockNumberResponse> {
+    syscall_handler.verify_not_in_validate_mode("get_block_number")?;
     Ok(GetBlockNumberResponse { block_number: syscall_handler.context.block_context.block_number })
 }
 
@@ -404,6 +422,7 @@ pub fn get_block_timestamp(
     _vm: &mut VirtualMachine,
     syscall_handler: &mut DeprecatedSyscallHintProcessor<'_>,
 ) -> DeprecatedSyscallResult<GetBlockTimestampResponse> {
+    syscall_handler.verify_not_in_validate_mode("get_block_timestamp")?;
     Ok(GetBlockTimestampResponse {
         block_timestamp: syscall_handler.context.block_context.block_timestamp,
     })
@@ -456,6 +475,7 @@ pub fn get_sequencer_address(
     _vm: &mut VirtualMachine,
     syscall_handler: &mut DeprecatedSyscallHintProcessor<'_>,
 ) -> DeprecatedSyscallResult<GetSequencerAddressResponse> {
+    syscall_handler.verify_not_in_validate_mode("get_sequencer_address")?;
     Ok(GetSequencerAddressResponse {
         address: syscall_handler.context.block_context.sequencer_address,
     })
