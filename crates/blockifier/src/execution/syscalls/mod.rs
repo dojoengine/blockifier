@@ -1,6 +1,7 @@
 use cairo_felt::Felt252;
 use cairo_vm::types::relocatable::Relocatable;
 use cairo_vm::vm::vm_core::VirtualMachine;
+use ecvrf::{VrfProof, VrfPk};
 use num_traits::ToPrimitive;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{
@@ -385,6 +386,7 @@ impl SyscallResponse for GetExecutionInfoResponse {
         Ok(())
     }
 }
+
 pub fn get_execution_info(
     _request: GetExecutionInfoRequest,
     vm: &mut VirtualMachine,
@@ -394,6 +396,91 @@ pub fn get_execution_info(
     let execution_info_ptr = syscall_handler.get_or_allocate_execution_info_segment(vm)?;
 
     Ok(GetExecutionInfoResponse { execution_info_ptr })
+}
+
+// GetRandom syscall.
+
+pub struct GetRandomRequest {
+    pub seed: u64,
+}
+
+impl SyscallRequest for GetRandomRequest {
+    fn read(vm: &VirtualMachine, ptr: &mut Relocatable) -> SyscallResult<GetRandomRequest> {
+        let seed = felt_from_ptr(vm, ptr)?;
+        let seed =
+            seed.to_u64().ok_or_else(|| SyscallExecutionError::InvalidSyscallInput {
+                input: felt_to_stark_felt(&seed),
+                info: String::from("Unexpected seed."),
+            })?;
+
+        Ok(GetRandomRequest { seed })
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct GetRandomResponse {
+    // the random u256
+    pub hash_low: Felt252,
+    pub hash_high: Felt252,
+    // randomness proof
+    pub proof: VrfProof,
+    pub pk: VrfPk,
+}
+
+impl SyscallResponse for GetRandomResponse {
+    fn write(self, vm: &mut VirtualMachine, ptr: &mut Relocatable) -> WriteResponseResult {
+        write_felt(vm, ptr, self.hash_low)?;
+        write_felt(vm, ptr, self.hash_high)?;
+
+        // TODO: write proof
+
+        Ok(())
+    }
+}
+
+pub fn get_random(
+    request: GetRandomRequest,
+    _vm: &mut VirtualMachine,
+    syscall_handler: &mut SyscallHintProcessor<'_>,
+    _remaining_gas: &mut u64,
+) -> SyscallResult<GetRandomResponse> {
+    let execution_context = &mut syscall_handler.context;
+
+    // get useful data from execution context
+    let ecvrf_private_key = &mut execution_context.block_context.ecvrf_private_key;
+    let ecvrf_public_key = &mut execution_context.block_context.ecvrf_public_key;
+    let n_requested_ecvrf = execution_context.n_requested_ecvrf;
+    let current_block_number = execution_context.block_context.block_number.0;
+
+    // get latest accessible block hash or 0 if no block hash is accessible yet
+    let block_hash = if current_block_number < constants::STORED_BLOCK_HASH_BUFFER {
+        StarkFelt::from(0_u128)
+    } else {
+        let key = StorageKey::try_from(StarkFelt::from(current_block_number - constants::STORED_BLOCK_HASH_BUFFER))?;
+        let block_hash_contract_address =
+            ContractAddress::try_from(StarkFelt::from(constants::BLOCK_HASH_CONTRACT_ADDRESS))?;
+        syscall_handler.state.get_storage_at(block_hash_contract_address, key)?
+    };
+
+    // seed construction
+    let mut seed: Vec<u8> = Vec::new();
+    seed.extend_from_slice(&n_requested_ecvrf.to_le_bytes());
+    seed.extend_from_slice(block_hash.bytes());
+    seed.extend_from_slice(&request.seed.to_le_bytes());
+
+    let (hash, proof) = ecvrf::prove(seed.as_slice(), &ecvrf_private_key);
+
+    let hash_low: u128 = u128::from_le_bytes(hash[0..16].try_into().unwrap());
+    let hash_high: u128 = u128::from_le_bytes(hash[16..32].try_into().unwrap());
+
+    execution_context.n_requested_ecvrf += 1;
+
+    Ok(GetRandomResponse {
+        hash_low: Felt252::from(hash_low),
+        hash_high: Felt252::from(hash_high),
+        proof,
+        pk: (*ecvrf_public_key).clone(),
+    })
 }
 
 // LibraryCall syscall.
