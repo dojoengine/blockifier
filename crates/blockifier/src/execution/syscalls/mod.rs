@@ -408,11 +408,10 @@ pub struct GetRandomRequest {
 impl SyscallRequest for GetRandomRequest {
     fn read(vm: &VirtualMachine, ptr: &mut Relocatable) -> SyscallResult<GetRandomRequest> {
         let seed = felt_from_ptr(vm, ptr)?;
-        let seed =
-            seed.to_u64().ok_or_else(|| SyscallExecutionError::InvalidSyscallInput {
-                input: felt_to_stark_felt(&seed),
-                info: String::from("Unexpected seed."),
-            })?;
+        let seed = seed.to_u64().ok_or_else(|| SyscallExecutionError::InvalidSyscallInput {
+            input: felt_to_stark_felt(&seed),
+            info: String::from("Unexpected seed."),
+        })?;
 
         Ok(GetRandomRequest { seed })
     }
@@ -460,7 +459,9 @@ pub fn get_random(
     let block_hash = if current_block_number < constants::STORED_BLOCK_HASH_BUFFER {
         StarkFelt::from(0_u128)
     } else {
-        let key = StorageKey::try_from(StarkFelt::from(current_block_number - constants::STORED_BLOCK_HASH_BUFFER))?;
+        let key = StorageKey::try_from(StarkFelt::from(
+            current_block_number - constants::STORED_BLOCK_HASH_BUFFER,
+        ))?;
         let block_hash_contract_address =
             ContractAddress::try_from(StarkFelt::from(constants::BLOCK_HASH_CONTRACT_ADDRESS))?;
         syscall_handler.state.get_storage_at(block_hash_contract_address, key)?
@@ -491,11 +492,7 @@ pub fn get_random(
     // increase requested ecvrf count
     syscall_handler.context.n_requested_ecvrf += 1;
 
-    Ok(GetRandomResponse {
-        hash,
-        proof: proof_segment,
-        pk: ecvrf_public_key,
-    })
+    Ok(GetRandomResponse { hash, proof: proof_segment, pk: ecvrf_public_key })
 }
 
 // LibraryCall syscall.
