@@ -1,7 +1,8 @@
 use cairo_felt::Felt252;
 use cairo_vm::types::relocatable::Relocatable;
 use cairo_vm::vm::vm_core::VirtualMachine;
-use ecvrf::{VrfProof, VrfPk};
+use ecvrf::VrfPk;
+use num_bigint::BigUint;
 use num_traits::ToPrimitive;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{
@@ -26,7 +27,7 @@ use crate::execution::deprecated_syscalls::DeprecatedSyscallSelector;
 use crate::execution::entry_point::{CallEntryPoint, CallType, ConstructorContext};
 use crate::execution::execution_utils::{
     execute_deployment, felt_from_ptr, felt_to_stark_felt, stark_felt_from_ptr, stark_felt_to_felt,
-    write_felt, write_maybe_relocatable, write_stark_felt, ReadOnlySegment,
+    write_felt, write_maybe_relocatable, write_stark_felt, write_u256, ReadOnlySegment,
 };
 use crate::execution::syscalls::hint_processor::{INVALID_INPUT_LENGTH_ERROR, OUT_OF_GAS_ERROR};
 use crate::transaction::transaction_utils::update_remaining_gas;
@@ -417,22 +418,26 @@ impl SyscallRequest for GetRandomRequest {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct GetRandomResponse {
     // the random u256
-    pub hash_low: Felt252,
-    pub hash_high: Felt252,
+    pub hash: [u8; 32],
     // randomness proof
-    pub proof: VrfProof,
+    pub proof: ReadOnlySegment,
+    // ecvrf public key
     pub pk: VrfPk,
 }
 
 impl SyscallResponse for GetRandomResponse {
     fn write(self, vm: &mut VirtualMachine, ptr: &mut Relocatable) -> WriteResponseResult {
-        write_felt(vm, ptr, self.hash_low)?;
-        write_felt(vm, ptr, self.hash_high)?;
+        // write hash
+        write_u256(vm, ptr, BigUint::from_bytes_le(&self.hash))?;
 
-        // TODO: write proof
+        // write proof
+        write_segment(vm, ptr, self.proof)?;
+
+        // write public key
+        write_u256(vm, ptr, BigUint::from_bytes_le(&self.pk.to_bytes()))?;
 
         Ok(())
     }
@@ -440,17 +445,16 @@ impl SyscallResponse for GetRandomResponse {
 
 pub fn get_random(
     request: GetRandomRequest,
-    _vm: &mut VirtualMachine,
+    vm: &mut VirtualMachine,
     syscall_handler: &mut SyscallHintProcessor<'_>,
     _remaining_gas: &mut u64,
 ) -> SyscallResult<GetRandomResponse> {
-    let execution_context = &mut syscall_handler.context;
-
     // get useful data from execution context
-    let ecvrf_private_key = &mut execution_context.block_context.ecvrf_private_key;
-    let ecvrf_public_key = &mut execution_context.block_context.ecvrf_public_key;
-    let n_requested_ecvrf = execution_context.n_requested_ecvrf;
-    let current_block_number = execution_context.block_context.block_number.0;
+    let ecvrf_private_key = syscall_handler.context.block_context.ecvrf_private_key.clone();
+    let ecvrf_public_key = syscall_handler.context.block_context.ecvrf_public_key.clone();
+    let n_requested_ecvrf = syscall_handler.context.n_requested_ecvrf;
+    let current_block_number = syscall_handler.context.block_context.block_number.0;
+    let caller_address = syscall_handler.caller_address();
 
     // get latest accessible block hash or 0 if no block hash is accessible yet
     let block_hash = if current_block_number < constants::STORED_BLOCK_HASH_BUFFER {
@@ -467,19 +471,30 @@ pub fn get_random(
     seed.extend_from_slice(&n_requested_ecvrf.to_le_bytes());
     seed.extend_from_slice(block_hash.bytes());
     seed.extend_from_slice(&request.seed.to_le_bytes());
+    seed.extend_from_slice(caller_address.0.key().bytes());
 
+    // compute ecvrf hash and proof
     let (hash, proof) = ecvrf::prove(seed.as_slice(), &ecvrf_private_key);
 
-    let hash_low: u128 = u128::from_le_bytes(hash[0..16].try_into().unwrap());
-    let hash_high: u128 = u128::from_le_bytes(hash[16..32].try_into().unwrap());
+    // create proof felt array
+    let binding = proof.to_bytes();
+    let proof_chunks: Vec<_> = binding.chunks_exact(24).collect();
+    let raw_proof = [
+        StarkFelt::new(proof_chunks[0].try_into().unwrap()).unwrap(),
+        StarkFelt::new(proof_chunks[1].try_into().unwrap()).unwrap(),
+        StarkFelt::new(proof_chunks[2].try_into().unwrap()).unwrap(),
+        StarkFelt::new(proof_chunks[3].try_into().unwrap()).unwrap(),
+    ];
 
-    execution_context.n_requested_ecvrf += 1;
+    let proof_segment = create_retdata_segment(vm, syscall_handler, &raw_proof)?;
+
+    // increase requested ecvrf count
+    syscall_handler.context.n_requested_ecvrf += 1;
 
     Ok(GetRandomResponse {
-        hash_low: Felt252::from(hash_low),
-        hash_high: Felt252::from(hash_high),
-        proof,
-        pk: (*ecvrf_public_key).clone(),
+        hash,
+        proof: proof_segment,
+        pk: ecvrf_public_key,
     })
 }
 
