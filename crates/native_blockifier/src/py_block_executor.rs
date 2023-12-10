@@ -1,13 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-<<<<<<< HEAD
 use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
 use blockifier::state::cached_state::GlobalContractCache;
-=======
-use blockifier::block_context::BlockContext;
 use ecvrf::{VrfPk, VrfSk};
->>>>>>> cd1e210 (fix native_blockifier build)
 use pyo3::prelude::*;
 use starknet_api::block::{BlockNumber, BlockTimestamp};
 use starknet_api::core::{ChainId, ContractAddress};
@@ -230,7 +226,7 @@ pub struct PyGeneralConfig {
     pub cairo_resource_fee_weights: Arc<HashMap<String, f64>>,
     pub invoke_tx_max_n_steps: u32,
     pub validate_max_n_steps: u32,
-    pub ecvrf_private_key: PyVrfPk,
+    pub ecvrf_private_key: [u8; 32],
 }
 
 impl FromPyObject<'_> for PyGeneralConfig {
@@ -239,16 +235,11 @@ impl FromPyObject<'_> for PyGeneralConfig {
         let cairo_resource_fee_weights: HashMap<String, f64> =
             py_attr(general_config, "cairo_resource_fee_weights")?;
         let cairo_resource_fee_weights = Arc::new(cairo_resource_fee_weights);
-<<<<<<< HEAD
         let min_strk_l1_gas_price: u128 = py_attr(general_config, "min_strk_l1_gas_price")?;
         let max_strk_l1_gas_price: u128 = py_attr(general_config, "max_strk_l1_gas_price")?;
         let invoke_tx_max_n_steps: u32 = py_attr(general_config, "invoke_tx_max_n_steps")?;
         let validate_max_n_steps: u32 = py_attr(general_config, "validate_max_n_steps")?;
-=======
-        let invoke_tx_max_n_steps = general_config.getattr("invoke_tx_max_n_steps")?.extract()?;
-        let validate_max_n_steps = general_config.getattr("validate_max_n_steps")?.extract()?;
         let ecvrf_private_key = general_config.getattr("ecvrf_private_key")?.extract()?;
->>>>>>> cd1e210 (fix native_blockifier build)
 
         Ok(Self {
             starknet_os_config,
@@ -286,14 +277,10 @@ pub fn into_block_context(
     max_recursion_depth: usize,
 ) -> NativeBlockifierResult<BlockContext> {
     let starknet_os_config = general_config.starknet_os_config.clone();
-<<<<<<< HEAD
     let block_number = BlockNumber(block_info.block_number);
-=======
-    let block_number = BlockNumber(py_attr(block_info, "block_number")?);
-    let ecvrf_private_key = general_config.ecvrf_private_key.0;
+    let ecvrf_private_key = VrfSk::from_bytes(&general_config.ecvrf_private_key).unwrap();
     let ecvrf_public_key = VrfPk::new(&ecvrf_private_key);
 
->>>>>>> cd1e210 (fix native_blockifier build)
     let block_context = BlockContext {
         chain_id: starknet_os_config.chain_id,
         block_number,

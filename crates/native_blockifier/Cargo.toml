@@ -35,7 +35,7 @@ pyo3-log = "0.8.1"
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api = { workspace = true, features = ["testing"] }
 thiserror.workspace = true
-<<<<<<< HEAD
+ecvrf.workspace = true
 
 [dev-dependencies]
 cached.workspace = true
@@ -46,6 +46,3 @@ criterion = { version = "0.3", features = ["html_reports"] }
 path = "bench/blockifier_bench.rs"
 name = "blockifier_bench"
 harness = false
-=======
-ecvrf.workspace = true
->>>>>>> cd1e210 (fix native_blockifier build)

@@ -1279,7 +1279,7 @@ fn test_only_query_flag(#[case] only_query: bool) {
         [
             execute_calldata,
             expected_block_info.clone().to_vec(),
-            expected_tx_info.clone(),
+            expected_tx_info,
             expected_call_info,
         ]
         .concat()

@@ -54,7 +54,7 @@ fn test_convert_wei_to_strk() {
         PoolStateAggregator::new(&[state_3, state_1.clone(), state_2.clone()])
             .unwrap()
             .convert_wei_to_strk(wei_amount.clone()),
-        (state_2.total_strk.clone() * wei_amount.clone()) / state_2.total_wei.clone()
+        (state_2.total_strk.clone() * wei_amount.clone()) / state_2.total_wei
     );
 
     // Convert Wei -> STRK with multiple pool states with equal weight partition.

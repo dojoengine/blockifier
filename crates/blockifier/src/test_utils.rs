@@ -12,6 +12,7 @@ use cairo_vm::vm::runners::builtin_runner::{
     BITWISE_BUILTIN_NAME, EC_OP_BUILTIN_NAME, HASH_BUILTIN_NAME, OUTPUT_BUILTIN_NAME,
     POSEIDON_BUILTIN_NAME, RANGE_CHECK_BUILTIN_NAME, SIGNATURE_BUILTIN_NAME,
 };
+use ecvrf::{VrfSk, VrfPk};
 use num_traits::{One, Zero};
 use starknet_api::block::{BlockNumber, BlockTimestamp};
 use starknet_api::core::{
@@ -139,6 +140,8 @@ pub const RESERVE_1: u32 = 100;
 pub const CURRENT_BLOCK_TIMESTAMP: u64 = 1072023;
 
 pub const CHAIN_ID_NAME: &str = "SN_GOERLI";
+
+pub const ECVRF_PRIVATE_KEY: [u8; 32] = *b"80808080808080808080808080808080";
 
 /// A simple implementation of `StateReader` using `HashMap`s as storage.
 #[derive(Debug, Default)]
@@ -451,6 +454,9 @@ impl CallEntryPoint {
 
 impl BlockContext {
     pub fn create_for_testing() -> BlockContext {
+        let ecvrf_private_key = VrfSk::from_bytes(&ECVRF_PRIVATE_KEY).unwrap();
+        let ecvrf_public_key = VrfPk::new(&ecvrf_private_key);
+
         BlockContext {
             chain_id: ChainId(CHAIN_ID_NAME.to_string()),
             block_number: BlockNumber(CURRENT_BLOCK_NUMBER),
@@ -468,6 +474,8 @@ impl BlockContext {
             invoke_tx_max_n_steps: MAX_STEPS_PER_TX as u32,
             validate_max_n_steps: MAX_VALIDATE_STEPS_PER_TX as u32,
             max_recursion_depth: 50,
+            ecvrf_private_key,
+            ecvrf_public_key,
         }
     }
 

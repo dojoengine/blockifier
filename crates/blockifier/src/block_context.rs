@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ecvrf::{VrfSk, VrfPk};
 use starknet_api::block::{BlockNumber, BlockTimestamp};
 use starknet_api::core::{ChainId, ContractAddress};
 
@@ -22,6 +23,10 @@ pub struct BlockContext {
     pub invoke_tx_max_n_steps: u32,
     pub validate_max_n_steps: u32,
     pub max_recursion_depth: usize,
+
+    // ECVRF
+    pub ecvrf_private_key: VrfSk,
+    pub ecvrf_public_key: VrfPk,
 }
 
 impl BlockContext {

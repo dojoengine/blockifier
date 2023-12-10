@@ -396,7 +396,7 @@ fn test_get_execution_info(
         calldata: Calldata(
             [
                 expected_block_info.to_vec(),
-                expected_tx_info.clone(),
+                expected_tx_info,
                 expected_resource_bounds,
                 expected_call_info,
             ]
