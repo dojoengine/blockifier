@@ -230,7 +230,7 @@ pub struct PyGeneralConfig {
     pub cairo_resource_fee_weights: Arc<HashMap<String, f64>>,
     pub invoke_tx_max_n_steps: u32,
     pub validate_max_n_steps: u32,
-    pub ecvrf_private_key: VrfSk,
+    pub ecvrf_private_key: PyVrfPk,
 }
 
 impl FromPyObject<'_> for PyGeneralConfig {
@@ -290,7 +290,7 @@ pub fn into_block_context(
     let block_number = BlockNumber(block_info.block_number);
 =======
     let block_number = BlockNumber(py_attr(block_info, "block_number")?);
-    let ecvrf_private_key = general_config.ecvrf_private_key;
+    let ecvrf_private_key = general_config.ecvrf_private_key.0;
     let ecvrf_public_key = VrfPk::new(&ecvrf_private_key);
 
 >>>>>>> cd1e210 (fix native_blockifier build)
