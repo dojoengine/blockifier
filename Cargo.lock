@@ -2103,8 +2103,13 @@ dependencies = [
  "cached",
  "cairo-lang-starknet",
  "cairo-vm",
+<<<<<<< HEAD
  "criterion",
  "indexmap 2.1.0",
+=======
+ "ecvrf",
+ "indexmap 1.9.3",
+>>>>>>> cd1e210 (fix native_blockifier build)
  "log",
  "num-bigint",
  "papyrus_storage",
