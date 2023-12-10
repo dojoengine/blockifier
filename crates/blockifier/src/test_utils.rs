@@ -12,7 +12,7 @@ use cairo_vm::vm::runners::builtin_runner::{
     BITWISE_BUILTIN_NAME, EC_OP_BUILTIN_NAME, HASH_BUILTIN_NAME, OUTPUT_BUILTIN_NAME,
     POSEIDON_BUILTIN_NAME, RANGE_CHECK_BUILTIN_NAME, SIGNATURE_BUILTIN_NAME,
 };
-use ecvrf::{VrfSk, VrfPk};
+use ecvrf::{VrfPk, VrfSk};
 use num_traits::{One, Zero};
 use starknet_api::block::{BlockNumber, BlockTimestamp};
 use starknet_api::core::{
