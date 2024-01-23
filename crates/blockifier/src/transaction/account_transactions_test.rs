@@ -1281,7 +1281,7 @@ fn test_revert_on_overdraft(
                 fee_token_address
             ),
             version,
-            resource_bounds: max_resource_bounds.clone(),
+            resource_bounds: max_resource_bounds,
             nonce: nonce_manager.next(account_address),
         },
     )

@@ -153,6 +153,9 @@ pub struct EntryPointExecutionContext {
 
     // The execution mode affects the behavior of the hint processor.
     pub execution_mode: ExecutionMode,
+
+    /// Used to modify get_random seed.
+    pub n_requested_ecvrf: usize,
 }
 
 impl EntryPointExecutionContext {
@@ -174,6 +177,7 @@ impl EntryPointExecutionContext {
             max_recursion_depth: block_context.max_recursion_depth,
             block_context: block_context.clone(),
             execution_mode: mode,
+            n_requested_ecvrf: 0,
         })
     }
 
@@ -384,7 +388,7 @@ struct RecursionDepthGuard {
 
 impl RecursionDepthGuard {
     fn new(current_depth: Arc<RefCell<usize>>, max_depth: usize) -> Self {
-        Self { current_depth: current_depth.clone(), max_depth }
+        Self { current_depth, max_depth }
     }
 
     // Tries to increment the current recursion depth and returns an error if the maximum depth

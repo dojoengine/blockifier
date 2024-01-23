@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
 use blockifier::state::cached_state::GlobalContractCache;
+use ecvrf::{VrfPk, VrfSk};
 use pyo3::prelude::*;
 use starknet_api::block::{BlockNumber, BlockTimestamp};
 use starknet_api::core::{ChainId, ContractAddress};
@@ -225,6 +226,7 @@ pub struct PyGeneralConfig {
     pub cairo_resource_fee_weights: Arc<HashMap<String, f64>>,
     pub invoke_tx_max_n_steps: u32,
     pub validate_max_n_steps: u32,
+    pub ecvrf_private_key: [u8; 32],
 }
 
 impl FromPyObject<'_> for PyGeneralConfig {
@@ -237,6 +239,7 @@ impl FromPyObject<'_> for PyGeneralConfig {
         let max_strk_l1_gas_price: u128 = py_attr(general_config, "max_strk_l1_gas_price")?;
         let invoke_tx_max_n_steps: u32 = py_attr(general_config, "invoke_tx_max_n_steps")?;
         let validate_max_n_steps: u32 = py_attr(general_config, "validate_max_n_steps")?;
+        let ecvrf_private_key = general_config.getattr("ecvrf_private_key")?.extract()?;
 
         Ok(Self {
             starknet_os_config,
@@ -245,6 +248,7 @@ impl FromPyObject<'_> for PyGeneralConfig {
             cairo_resource_fee_weights,
             invoke_tx_max_n_steps,
             validate_max_n_steps,
+            ecvrf_private_key,
         })
     }
 }
@@ -274,6 +278,9 @@ pub fn into_block_context(
 ) -> NativeBlockifierResult<BlockContext> {
     let starknet_os_config = general_config.starknet_os_config.clone();
     let block_number = BlockNumber(block_info.block_number);
+    let ecvrf_private_key = VrfSk::from_bytes(&general_config.ecvrf_private_key).unwrap();
+    let ecvrf_public_key = VrfPk::new(&ecvrf_private_key);
+
     let block_context = BlockContext {
         chain_id: starknet_os_config.chain_id,
         block_number,
@@ -295,6 +302,8 @@ pub fn into_block_context(
         invoke_tx_max_n_steps: general_config.invoke_tx_max_n_steps,
         validate_max_n_steps: general_config.validate_max_n_steps,
         max_recursion_depth,
+        ecvrf_private_key,
+        ecvrf_public_key,
     };
 
     Ok(block_context)

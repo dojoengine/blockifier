@@ -39,7 +39,7 @@ pretty_assertions = "1.2.1"
 rstest = "0.17.0"
 serde = "1.0.184"
 serde_json = "1.0.81"
-sha3 = "0.10.6"
+sha3 = "0.10.8"
 starknet-crypto = "0.5.1"
 starknet_api = "0.6.0-rc3"
 strum = "0.24.1"
@@ -47,6 +47,7 @@ strum_macros = "0.24.3"
 tempfile = "3.7.0"
 test-case = "2.2.2"
 thiserror = "1.0.37"
+ecvrf = "0.4.3"
 
 [patch.crates-io]
 cairo-felt = { git = "https://github.com/dojoengine/cairo-rs.git", rev = "262b7eb4b11ab165a2a936a5f914e78aa732d4a2" }
