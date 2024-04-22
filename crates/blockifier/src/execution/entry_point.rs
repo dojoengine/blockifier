@@ -172,14 +172,12 @@ impl EntryPointExecutionContext {
         let block_upper_bound = match mode {
             // TODO(Ori, 1/2/2024): Write an indicative expect message explaining why the conversion
             // works.
-            ExecutionMode::Validate => versioned_constants
-                .validate_max_n_steps
-                .try_into()
-                .expect("Failed to convert validate_max_n_steps (u32) to usize."),
-            ExecutionMode::Execute => versioned_constants
-                .invoke_tx_max_n_steps
-                .try_into()
-                .expect("Failed to convert invoke_tx_max_n_steps (u32) to usize."),
+            ExecutionMode::Validate => {
+                block_context.versioned_constants.validate_max_n_steps as usize
+            }
+            ExecutionMode::Execute => {
+                block_context.versioned_constants.invoke_tx_max_n_steps as usize
+            }
         };
 
         if !limit_steps_by_resources || !tx_info.enforce_fee()? {
