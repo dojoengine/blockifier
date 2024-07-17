@@ -177,15 +177,29 @@ impl<S: State> Executable<S> for DeclareTransaction {
         _remaining_gas: &mut u64,
     ) -> TransactionExecutionResult<Option<CallInfo>> {
         let class_hash = self.class_hash();
+        let class = self.contract_class();
 
-        match &self.tx {
-            // No class commitment, so no need to check if the class is already declared.
+        // This discrepancy from upstream is to support declaring legacy contract with minimal effort
+        // as possible. Basically we define the compiled class hash for legacy class as the same as its
+        // class hash. (Legacy contract class are the equivalent of a compiled sierra contract)
+        //
+        // We perform the same operation for all declaration tx types, prior to this we don't have
+        // to do this, but due to recent changes (at least on blockifier 0.8.0-dev.2) simply setting the
+        // compiled class hash with `state.set_compiled_class_hash` isn't enough (which was the only changes
+        // we've made before to support legacy class. https://github.com/dojoengine/blockifier/blob/57c115864b5d2e9876efe289bd3dfbf05744a76b/crates/blockifier/src/transaction/transactions.rs#L172-L201).
+        // Now we have to also call `state.get_compiled_contract_class` for legacy class as well due to the changes
+        // made by blockifier in the underlying caching system which later used for computing the state diff.
+        //
+        // If we don't call `state.get_compiled_contract_class` it'd not be able to setup the cache values properly
+        // and will result in an error when trying to declare legacy contract (the error happens when the state diff is
+        // being computed). We should remove this changes once we completely remove support for legacy contracts in
+        // Katana. For now, we're maintaining this support only for Kakarot.
+        let compiled_hash = match &self.tx {
             starknet_api::transaction::DeclareTransaction::V0(_)
             | starknet_api::transaction::DeclareTransaction::V1(_) => {
-                state.set_contract_class(class_hash, self.contract_class())?;
-                state.set_compiled_class_hash(class_hash, CompiledClassHash(class_hash.0))?;
-                Ok(None)
+                CompiledClassHash(class_hash.0)
             }
+
             starknet_api::transaction::DeclareTransaction::V2(DeclareTransactionV2 {
                 compiled_class_hash,
                 ..
@@ -193,22 +207,24 @@ impl<S: State> Executable<S> for DeclareTransaction {
             | starknet_api::transaction::DeclareTransaction::V3(DeclareTransactionV3 {
                 compiled_class_hash,
                 ..
-            }) => {
-                match state.get_compiled_contract_class(class_hash) {
-                    Err(StateError::UndeclaredClassHash(_)) => {
-                        // Class is undeclared; declare it.
-                        state.set_contract_class(class_hash, self.contract_class())?;
-                        state.set_compiled_class_hash(class_hash, *compiled_class_hash)?;
-                        Ok(None)
-                    }
-                    Err(error) => Err(error)?,
-                    Ok(_) => {
-                        // Class is already declared, cannot redeclare
-                        // (i.e., make sure the leaf is uninitialized).
-                        Err(TransactionExecutionError::DeclareTransactionError { class_hash })
-                    }
-                }
+            }) => *compiled_class_hash,
+        };
+
+        match state.get_compiled_contract_class(class_hash) {
+            Ok(_) => {
+                // Class is already declared, cannot redeclare
+                // (i.e., make sure the leaf is uninitialized).
+                Err(TransactionExecutionError::DeclareTransactionError { class_hash })
             }
+
+            Err(StateError::UndeclaredClassHash(_)) => {
+                // Class is undeclared; declare it.
+                state.set_contract_class(class_hash, class)?;
+                state.set_compiled_class_hash(class_hash, compiled_hash)?;
+                Ok(None)
+            }
+
+            Err(error) => Err(error)?,
         }
     }
 }
