@@ -267,7 +267,13 @@ impl<'a, S: StateReader> WorkerExecutor<'a, S> {
                     }
                 }
             }
-            complete_fee_transfer_flow(&tx_context, tx_execution_info, &mut tx_versioned_state);
+
+            complete_fee_transfer_flow(
+                &tx_context,
+                tx_execution_info,
+                &mut tx_versioned_state,
+                &self.execution_flags,
+            );
             // Optimization: changing the sequencer balance storage cell does not trigger
             // (re-)validation of the next transactions.
         }

@@ -11,6 +11,7 @@ use crate::fee::fee_utils::get_sequencer_balance_keys;
 use crate::state::cached_state::{ContractClassMapping, StateMaps};
 use crate::state::state_api::UpdatableState;
 use crate::transaction::objects::TransactionExecutionInfo;
+use crate::transaction::transactions::ExecutionFlags;
 
 #[cfg(test)]
 #[path = "fee_utils_test.rs"]
@@ -26,6 +27,7 @@ pub fn complete_fee_transfer_flow(
     tx_context: &TransactionContext,
     tx_execution_info: &mut TransactionExecutionInfo,
     state: &mut impl UpdatableState,
+    execution_flags: &ExecutionFlags,
 ) {
     if tx_context.is_sequencer_the_sender() {
         // When the sequencer is the sender, we use the sequential (full) fee transfer.
@@ -56,11 +58,19 @@ pub fn complete_fee_transfer_flow(
             sequencer_balance,
         );
     } else {
-        assert_eq!(
-            tx_execution_info.transaction_receipt.fee,
-            Fee(0),
-            "Transaction with no fee transfer info must have zero fee."
-        )
+        // @kariy: If tx is executed with ExecutionFlags { charge_fee: false, ... }, it would still compute the receipt (ie fee, etc)
+        // but doesn't build the `CallInfo` for fee transfer. So this if-else is basically to ensure that we don't panic if the assertion 
+        // fails because the transaction is executed with charge_fee = false. 
+        //
+        // We expect the opposite of the invariant that the assert statement is checking for, when `charge_fee` is false.
+        // So we only perform the assertion when `charge_fee` is true (which is the original intention i believe).
+        if execution_flags.charge_fee {
+            assert_eq!(
+                tx_execution_info.transaction_receipt.fee,
+                Fee(0),
+                "Transaction with no fee transfer info must have zero fee."
+            )
+        } 
     }
 }
 
