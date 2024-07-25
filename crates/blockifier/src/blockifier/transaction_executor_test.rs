@@ -27,7 +27,7 @@ use crate::transaction::test_utils::{
     emit_n_events_tx, l1_resource_bounds, TestInitData,
 };
 use crate::transaction::transaction_execution::Transaction;
-use crate::transaction::transactions::L1HandlerTransaction;
+use crate::transaction::transactions::{ExecutionFlags, L1HandlerTransaction};
 use crate::{declare_tx_args, deploy_account_tx_args, invoke_tx_args, nonce};
 
 fn tx_executor_test_body<S: StateReader>(
@@ -37,7 +37,7 @@ fn tx_executor_test_body<S: StateReader>(
     expected_bouncer_weights: BouncerWeights,
 ) {
     let mut tx_executor =
-        TransactionExecutor::new(state, block_context, TransactionExecutorConfig::default());
+        TransactionExecutor::new(state, block_context, TransactionExecutorConfig::default(), ExecutionFlags::default());
     // TODO(Arni, 30/03/2024): Consider adding a test for the transaction execution info. If A test
     // should not be added, rename the test to `test_bouncer_info`.
     // TODO(Arni, 30/03/2024): Test all bouncer weights.
@@ -248,7 +248,7 @@ fn test_bouncing(#[case] initial_bouncer_weights: BouncerWeights, #[case] n_even
 
     // TODO(Yoni, 15/6/2024): turn on concurrency mode.
     let mut tx_executor =
-        TransactionExecutor::new(state, block_context, TransactionExecutorConfig::default());
+        TransactionExecutor::new(state, block_context, TransactionExecutorConfig::default(), ExecutionFlags::default());
 
     tx_executor.bouncer.set_accumulated_weights(initial_bouncer_weights);
 
@@ -272,7 +272,8 @@ fn test_execute_txs_bouncing() {
     let TestInitData { state, account_address, contract_address, .. } =
         create_test_init_data(&block_context.chain_info, CairoVersion::Cairo1);
 
-    let mut tx_executor = TransactionExecutor::new(state, block_context, config);
+        
+    let mut tx_executor = TransactionExecutor::new(state, block_context, config, ExecutionFlags::default());
 
     let txs: Vec<Transaction> = [
         emit_n_events_tx(1, account_address, contract_address, nonce!(0_u32)),

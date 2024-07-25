@@ -48,6 +48,14 @@ pub struct ExecutionFlags {
     pub concurrency_mode: bool,
 }
 
+// The concurrency here should be ignored and deferred to the concurrency config of the executor
+// itself
+impl Default for ExecutionFlags {
+    fn default() -> Self {
+        Self { charge_fee: true, validate: true, concurrency_mode: false }
+    }
+}
+
 pub trait ExecutableTransaction<U: UpdatableState>: Sized {
     /// Executes the transaction in a transactional manner
     /// (if it fails, given state does not modify).

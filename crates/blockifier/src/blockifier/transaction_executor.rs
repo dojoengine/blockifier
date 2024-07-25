@@ -7,6 +7,11 @@ use std::sync::Arc;
 #[cfg(feature = "concurrency")]
 use std::sync::Mutex;
 
+use itertools::FoldWhile::{Continue, Done};
+use itertools::Itertools;
+use starknet_api::core::ClassHash;
+use thiserror::Error;
+
 use crate::blockifier::config::TransactionExecutorConfig;
 use crate::bouncer::{Bouncer, BouncerWeights};
 #[cfg(feature = "concurrency")]
@@ -19,10 +24,6 @@ use crate::transaction::errors::TransactionExecutionError;
 use crate::transaction::objects::TransactionExecutionInfo;
 use crate::transaction::transaction_execution::Transaction;
 use crate::transaction::transactions::{ExecutableTransaction, ExecutionFlags};
-use itertools::FoldWhile::{Continue, Done};
-use itertools::Itertools;
-use starknet_api::core::ClassHash;
-use thiserror::Error;
 
 #[cfg(test)]
 #[path = "transaction_executor_test.rs"]
@@ -57,6 +58,9 @@ pub struct TransactionExecutor<S> {
     // `None` while it is moved to the worker executor.
     // pub block_state: Option<CachedState<S>>,
     pub block_state: Option<S>,
+
+    // Flags for execution
+    pub execution_flags: ExecutionFlags,
 }
 
 impl<S: DojoStateAdapter> TransactionExecutor<S> {
@@ -64,6 +68,7 @@ impl<S: DojoStateAdapter> TransactionExecutor<S> {
         block_state: S,
         block_context: BlockContext,
         config: TransactionExecutorConfig,
+        execution_flags: ExecutionFlags,
     ) -> Self {
         log::debug!("Initializing Transaction Executor...");
         let bouncer_config = block_context.bouncer_config.clone();
@@ -74,6 +79,7 @@ impl<S: DojoStateAdapter> TransactionExecutor<S> {
             bouncer: Bouncer::new(bouncer_config),
             config,
             block_state: Some(block_state),
+            execution_flags,
         };
         log::debug!("Initialized Transaction Executor.");
 
@@ -91,8 +97,7 @@ impl<S: DojoStateAdapter> TransactionExecutor<S> {
             self.block_state.as_mut().expect(BLOCK_STATE_ACCESS_ERR),
         );
         // Executing a single transaction cannot be done in a concurrent mode.
-        let execution_flags =
-            ExecutionFlags { charge_fee: true, validate: true, concurrency_mode: false };
+        let execution_flags = ExecutionFlags { concurrency_mode: false, ..self.execution_flags };
         let tx_execution_result =
             tx.execute_raw(&mut transactional_state, &self.block_context, execution_flags);
         match tx_execution_result {
@@ -229,6 +234,7 @@ impl<S: DojoStateAdapter + Send> TransactionExecutor<S> {
             chunk,
             &self.block_context,
             Mutex::new(&mut self.bouncer),
+            &self.execution_flags,
         ));
 
         // No thread pool implementation is needed here since we already have our scheduler. The

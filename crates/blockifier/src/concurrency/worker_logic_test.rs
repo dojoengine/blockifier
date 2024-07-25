@@ -37,6 +37,7 @@ use crate::transaction::test_utils::{
     max_resource_bounds,
 };
 use crate::transaction::transaction_execution::Transaction;
+use crate::transaction::transactions::ExecutionFlags;
 use crate::{declare_tx_args, invoke_tx_args, nonce, storage_key};
 
 fn trivial_calldata_invoke_tx(
@@ -105,8 +106,14 @@ pub fn test_commit_tx() {
     let cached_state =
         test_state(&block_context.chain_info, BALANCE, &[(account, 1), (test_contract, 1)]);
     let versioned_state = safe_versioned_state_for_testing(cached_state);
-    let executor =
-        WorkerExecutor::new(versioned_state, &txs, &block_context, Mutex::new(&mut bouncer));
+    let execution_flags = ExecutionFlags::default();
+    let executor = WorkerExecutor::new(
+        versioned_state,
+        &txs,
+        &block_context,
+        Mutex::new(&mut bouncer),
+        &execution_flags,
+    );
 
     // Execute transactions.
     // Simulate a concurrent run by executing tx1 before tx0.
@@ -205,11 +212,13 @@ fn test_commit_tx_when_sender_is_sequencer() {
 
     let state = test_state(&block_context.chain_info, BALANCE, &[(account, 1), (test_contract, 1)]);
     let versioned_state = safe_versioned_state_for_testing(state);
+    let execution_flags = ExecutionFlags::default();
     let executor = WorkerExecutor::new(
         versioned_state,
         &sequencer_tx,
         &block_context,
         Mutex::new(&mut bouncer),
+        &execution_flags,
     );
     let tx_index = 0;
     let tx_versioned_state = executor.state.pin_version(tx_index);
@@ -312,11 +321,13 @@ fn test_worker_execute(max_resource_bounds: ResourceBoundsMapping) {
         .collect::<Vec<Transaction>>();
 
     let mut bouncer = Bouncer::new(block_context.bouncer_config.clone());
+    let execution_flags = ExecutionFlags::default();
     let worker_executor = WorkerExecutor::new(
         safe_versioned_state.clone(),
         &txs,
         &block_context,
         Mutex::new(&mut bouncer),
+        &execution_flags,
     );
 
     // Creates 3 execution active tasks.
@@ -474,11 +485,13 @@ fn test_worker_validate(max_resource_bounds: ResourceBoundsMapping) {
         .collect::<Vec<Transaction>>();
 
     let mut bouncer = Bouncer::new(block_context.bouncer_config.clone());
+    let execution_flags = ExecutionFlags::default();
     let worker_executor = WorkerExecutor::new(
         safe_versioned_state.clone(),
         &txs,
         &block_context,
         Mutex::new(&mut bouncer),
+        &execution_flags,
     );
 
     // Creates 2 active tasks.
@@ -587,8 +600,14 @@ fn test_deploy_before_declare(
         .collect::<Vec<Transaction>>();
 
     let mut bouncer = Bouncer::new(block_context.bouncer_config.clone());
-    let worker_executor =
-        WorkerExecutor::new(safe_versioned_state, &txs, &block_context, Mutex::new(&mut bouncer));
+    let execution_flags = ExecutionFlags::default();
+    let worker_executor = WorkerExecutor::new(
+        safe_versioned_state,
+        &txs,
+        &block_context,
+        Mutex::new(&mut bouncer),
+        &execution_flags,
+    );
 
     // Creates 2 active tasks.
     worker_executor.scheduler.next_task();
@@ -659,8 +678,14 @@ fn test_worker_commit_phase(max_resource_bounds: ResourceBoundsMapping) {
         .collect::<Vec<Transaction>>();
 
     let mut bouncer = Bouncer::new(block_context.bouncer_config.clone());
-    let worker_executor =
-        WorkerExecutor::new(safe_versioned_state, &txs, &block_context, Mutex::new(&mut bouncer));
+    let execution_flags = ExecutionFlags::default();
+    let worker_executor = WorkerExecutor::new(
+        safe_versioned_state,
+        &txs,
+        &block_context,
+        Mutex::new(&mut bouncer),
+        &execution_flags,
+    );
 
     // Try to commit before any transaction is ready.
     worker_executor.commit_while_possible();
@@ -749,8 +774,14 @@ fn test_worker_commit_phase_with_halt() {
         .collect::<Vec<Transaction>>();
 
     let mut bouncer = Bouncer::new(block_context.bouncer_config.clone());
-    let worker_executor =
-        WorkerExecutor::new(safe_versioned_state, &txs, &block_context, Mutex::new(&mut bouncer));
+    let execution_flags = ExecutionFlags::default();
+    let worker_executor = WorkerExecutor::new(
+        safe_versioned_state,
+        &txs,
+        &block_context,
+        Mutex::new(&mut bouncer),
+        &execution_flags,
+    );
 
     // Creates 2 active tasks.
     // Creating these tasks changes the status of both transactions to `Executing`. If we skip this

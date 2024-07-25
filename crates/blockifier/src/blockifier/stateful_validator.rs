@@ -21,7 +21,7 @@ use crate::transaction::account_transaction::AccountTransaction;
 use crate::transaction::errors::{TransactionExecutionError, TransactionPreValidationError};
 use crate::transaction::objects::TransactionInfo;
 use crate::transaction::transaction_execution::Transaction;
-use crate::transaction::transactions::ValidatableTransaction;
+use crate::transaction::transactions::{ExecutionFlags, ValidatableTransaction};
 
 #[cfg(test)]
 #[path = "stateful_validator_test.rs"]
@@ -53,8 +53,12 @@ impl<S: StateReader> StatefulValidator<S> {
         block_context: BlockContext,
         max_nonce_for_validation_skip: Nonce,
     ) -> Self {
-        let tx_executor =
-            TransactionExecutor::new(state, block_context, TransactionExecutorConfig::default());
+        let tx_executor = TransactionExecutor::new(
+            state,
+            block_context,
+            TransactionExecutorConfig::default(),
+            ExecutionFlags::default(),
+        );
         Self { tx_executor, max_nonce_for_validation_skip }
     }
 

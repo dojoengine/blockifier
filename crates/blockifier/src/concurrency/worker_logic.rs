@@ -45,6 +45,7 @@ pub struct WorkerExecutor<'a, S: StateReader> {
     pub execution_outputs: Box<[Mutex<Option<ExecutionTaskOutput>>]>,
     pub block_context: &'a BlockContext,
     pub bouncer: Mutex<&'a mut Bouncer>,
+    pub execution_flags: &'a ExecutionFlags,
 }
 impl<'a, S: StateReader> WorkerExecutor<'a, S> {
     pub fn new(
@@ -52,12 +53,21 @@ impl<'a, S: StateReader> WorkerExecutor<'a, S> {
         chunk: &'a [Transaction],
         block_context: &'a BlockContext,
         bouncer: Mutex<&'a mut Bouncer>,
+        execution_flags: &'a ExecutionFlags,
     ) -> Self {
         let scheduler = Scheduler::new(chunk.len());
         let execution_outputs =
             std::iter::repeat_with(|| Mutex::new(None)).take(chunk.len()).collect();
 
-        WorkerExecutor { scheduler, state, chunk, execution_outputs, block_context, bouncer }
+        WorkerExecutor {
+            scheduler,
+            state,
+            chunk,
+            execution_outputs,
+            block_context,
+            bouncer,
+            execution_flags,
+        }
     }
 
     // TODO(barak, 01/08/2024): Remove the `new` method or move it to test utils.
@@ -66,6 +76,7 @@ impl<'a, S: StateReader> WorkerExecutor<'a, S> {
         chunk: &'a [Transaction],
         block_context: &'a BlockContext,
         bouncer: Mutex<&'a mut Bouncer>,
+        execution_flags: &'a ExecutionFlags,
     ) -> Self {
         let versioned_state = VersionedState::new(state);
         let chunk_state = ThreadSafeVersionedState::new(versioned_state);
@@ -80,6 +91,7 @@ impl<'a, S: StateReader> WorkerExecutor<'a, S> {
             execution_outputs,
             block_context,
             bouncer,
+            execution_flags,
         }
     }
 
@@ -127,7 +139,7 @@ impl<'a, S: StateReader> WorkerExecutor<'a, S> {
         let mut transactional_state =
             TransactionalState::create_transactional(&mut tx_versioned_state);
         let execution_flags =
-            ExecutionFlags { charge_fee: true, validate: true, concurrency_mode: true };
+            ExecutionFlags { concurrency_mode: true, ..self.execution_flags.clone() };
 
         // get the tx of the give index
         let tx = &self.chunk[tx_index];

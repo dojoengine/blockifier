@@ -120,9 +120,11 @@ pub trait UpdatableState: StateReader {
     );
 }
 
-/// Adapter trait for integrating Katana with the new [`TransactionExecutor`](crate::blockifier::transaction_executor::TransactionExecutor).
+/// Adapter trait for integrating Katana with the new
+/// [`TransactionExecutor`](crate::blockifier::transaction_executor::TransactionExecutor).
 ///
-/// This is a minimal trait for allowing Katana to fully manage the state implementation of the [`TransactionExecutor`](crate::blockifier::transaction_executor::TransactionExecutor).
+/// This is a minimal trait for allowing Katana to fully manage the state implementation of the
+/// [`TransactionExecutor`](crate::blockifier::transaction_executor::TransactionExecutor).
 pub trait DojoStateAdapter: UpdatableState {
     fn visited_pcs(&self) -> HashMap<ClassHash, HashSet<usize>>;
 

@@ -19,6 +19,7 @@ use crate::test_utils::{CairoVersion, NonceManager, BALANCE, MAX_FEE};
 use crate::transaction::account_transaction::AccountTransaction;
 use crate::transaction::constants::TRANSFER_ENTRY_POINT_NAME;
 use crate::transaction::transaction_execution::Transaction;
+use crate::transaction::transactions::ExecutionFlags;
 
 const N_ACCOUNTS: u16 = 10000;
 const N_TXS: usize = 1000;
@@ -91,7 +92,12 @@ impl TransfersGenerator {
             test_state(&chain_info, config.balance, &[(account_contract, config.n_accounts)]);
         let executor_config =
             TransactionExecutorConfig { concurrency_config: config.concurrency_config.clone() };
-        let executor = TransactionExecutor::new(state, block_context, executor_config);
+        let execution_flags = ExecutionFlags {
+            concurrency_mode: executor_config.concurrency_config.enabled,
+            ..Default::default()
+        };
+        let executor =
+            TransactionExecutor::new(state, block_context, executor_config, execution_flags);
         let account_addresses = (0..config.n_accounts)
             .map(|instance_id| account_contract.get_instance_address(instance_id))
             .collect::<Vec<_>>();
