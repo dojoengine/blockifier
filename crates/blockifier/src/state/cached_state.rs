@@ -730,8 +730,8 @@ pub struct StateChangesCount {
 }
 
 impl<S: StateReader> crate::state::state_api::DojoStateAdapter for CachedState<S> {
-    fn visited_pcs(&self) -> &HashMap<ClassHash, HashSet<usize>> {
-        &self.visited_pcs
+    fn visited_pcs(&self) -> HashMap<ClassHash, HashSet<usize>> {
+        self.visited_pcs.clone()
     }
 
     fn to_state_diff(&mut self) -> StateResult<StateMaps> {
