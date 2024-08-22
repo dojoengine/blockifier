@@ -190,20 +190,23 @@ impl<S: State> Executable<S> for DeclareTransaction {
         let class_hash = self.class_hash();
         let class = self.contract_class();
 
-        // This discrepancy from upstream is to support declaring legacy contract with minimal effort
-        // as possible. Basically we define the compiled class hash for legacy class as the same as its
-        // class hash. (Legacy contract class are the equivalent of a compiled sierra contract)
+        // This discrepancy from upstream is to support declaring legacy contract with minimal
+        // effort as possible. Basically we define the compiled class hash for legacy class
+        // as the same as its class hash. (Legacy contract class are the equivalent of a
+        // compiled sierra contract)
         //
         // We perform the same operation for all declaration tx types, prior to this we don't have
-        // to do this, but due to recent changes (at least on blockifier 0.8.0-dev.2) simply setting the
-        // compiled class hash with `state.set_compiled_class_hash` isn't enough (which was the only changes
-        // we've made before to support legacy class. https://github.com/dojoengine/blockifier/blob/57c115864b5d2e9876efe289bd3dfbf05744a76b/crates/blockifier/src/transaction/transactions.rs#L172-L201).
-        // Now we have to also call `state.get_compiled_contract_class` for legacy class as well due to the changes
-        // made by blockifier in the underlying caching system which later used for computing the state diff.
+        // to do this, but due to recent changes (at least on blockifier 0.8.0-dev.2) simply setting
+        // the compiled class hash with `state.set_compiled_class_hash` isn't enough (which
+        // was the only changes we've made before to support legacy class. https://github.com/dojoengine/blockifier/blob/57c115864b5d2e9876efe289bd3dfbf05744a76b/crates/blockifier/src/transaction/transactions.rs#L172-L201).
+        // Now we have to also call `state.get_compiled_contract_class` for legacy class as well due
+        // to the changes made by blockifier in the underlying caching system which later
+        // used for computing the state diff.
         //
-        // If we don't call `state.get_compiled_contract_class` it'd not be able to setup the cache values properly
-        // and will result in an error when trying to declare legacy contract (the error happens when the state diff is
-        // being computed). We should remove this changes once we completely remove support for legacy contracts in
+        // If we don't call `state.get_compiled_contract_class` it'd not be able to setup the cache
+        // values properly and will result in an error when trying to declare legacy
+        // contract (the error happens when the state diff is being computed). We should
+        // remove this changes once we completely remove support for legacy contracts in
         // Katana. For now, we're maintaining this support only for Kakarot.
         let compiled_hash = match &self.tx {
             starknet_api::transaction::DeclareTransaction::V0(_)
