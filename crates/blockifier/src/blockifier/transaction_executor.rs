@@ -89,8 +89,12 @@ impl<S: StateReader> TransactionExecutor<S> {
             self.block_state.as_mut().expect(BLOCK_STATE_ACCESS_ERR),
         );
         // Executing a single transaction cannot be done in a concurrent mode.
-        let execution_flags =
-            ExecutionFlags { charge_fee: true, validate: true, concurrency_mode: false };
+        let execution_flags = ExecutionFlags {
+            charge_fee: true,
+            validate: true,
+            nonce_check: true,
+            concurrency_mode: false,
+        };
         let tx_execution_result =
             tx.execute_raw(&mut transactional_state, &self.block_context, execution_flags);
         match tx_execution_result {

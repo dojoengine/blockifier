@@ -188,7 +188,7 @@ fn test_simulate_validate_charge_fee_pre_validate(
     let result = account_invoke_tx(
         invoke_tx_args! {nonce: invalid_nonce, ..pre_validation_base_args.clone()},
     )
-    .execute(&mut state, &block_context, charge_fee, validate);
+    .execute(&mut state, &block_context, charge_fee, validate, true);
     assert_matches!(
         result.unwrap_err(),
         TransactionExecutionError::TransactionPreValidationError(
@@ -216,7 +216,7 @@ fn test_simulate_validate_charge_fee_pre_validate(
         nonce: nonce_manager.next(account_address),
         ..pre_validation_base_args.clone()
     })
-    .execute(&mut state, &block_context, charge_fee, validate);
+    .execute(&mut state, &block_context, charge_fee, validate, true);
     if !charge_fee {
         check_gas_and_fee(
             &block_context,
@@ -260,7 +260,7 @@ fn test_simulate_validate_charge_fee_pre_validate(
         nonce: nonce_manager.next(account_address),
         ..pre_validation_base_args.clone()
     })
-    .execute(&mut state, &block_context, charge_fee, validate);
+    .execute(&mut state, &block_context, charge_fee, validate, true);
     if !charge_fee {
         check_gas_and_fee(
             &block_context,
@@ -300,7 +300,7 @@ fn test_simulate_validate_charge_fee_pre_validate(
             nonce: nonce_manager.next(account_address),
             ..pre_validation_base_args
         })
-        .execute(&mut state, &block_context, charge_fee, validate);
+        .execute(&mut state, &block_context, charge_fee, validate, true);
         if !charge_fee {
             check_gas_and_fee(
                 &block_context,
@@ -368,7 +368,7 @@ fn test_simulate_validate_charge_fee_fail_validate(
         nonce: nonce_manager.next(faulty_account_address),
         only_query,
     })
-    .execute(&mut falliable_state, &block_context, charge_fee, validate);
+    .execute(&mut falliable_state, &block_context, charge_fee, validate, true);
     if !validate {
         // The reported fee should be the actual cost, regardless of whether or not fee is charged.
         check_gas_and_fee(
@@ -439,7 +439,7 @@ fn test_simulate_validate_charge_fee_mid_execution(
         nonce: nonce_manager.next(account_address),
         ..execution_base_args.clone()
     })
-    .execute(&mut state, &block_context, charge_fee, validate)
+    .execute(&mut state, &block_context, charge_fee, validate, true)
     .unwrap();
     assert!(tx_execution_info.is_reverted());
     check_gas_and_fee(
@@ -481,7 +481,7 @@ fn test_simulate_validate_charge_fee_mid_execution(
         nonce: nonce_manager.next(account_address),
         ..execution_base_args.clone()
     })
-    .execute(&mut state, &block_context, charge_fee, validate)
+    .execute(&mut state, &block_context, charge_fee, validate, true)
     .unwrap();
     assert_eq!(tx_execution_info.is_reverted(), charge_fee);
     if charge_fee {
@@ -533,7 +533,7 @@ fn test_simulate_validate_charge_fee_mid_execution(
         nonce: nonce_manager.next(account_address),
         ..execution_base_args
     })
-    .execute(&mut state, &low_step_block_context, charge_fee, validate)
+    .execute(&mut state, &low_step_block_context, charge_fee, validate, true)
     .unwrap();
     assert!(tx_execution_info.revert_error.clone().unwrap().contains("no remaining steps"));
     // Complete resources used are reported as transaction_receipt.resources; but only the charged
@@ -616,7 +616,7 @@ fn test_simulate_validate_charge_fee_post_execution(
         version,
         only_query,
     })
-    .execute(&mut state, &block_context, charge_fee, validate)
+    .execute(&mut state, &block_context, charge_fee, validate, true)
     .unwrap();
     assert_eq!(tx_execution_info.is_reverted(), charge_fee);
     if charge_fee {
@@ -681,7 +681,7 @@ fn test_simulate_validate_charge_fee_post_execution(
         version,
         only_query,
     })
-    .execute(&mut state, &block_context, charge_fee, validate)
+    .execute(&mut state, &block_context, charge_fee, validate, true)
     .unwrap();
     assert_eq!(tx_execution_info.is_reverted(), charge_fee);
     if charge_fee {
