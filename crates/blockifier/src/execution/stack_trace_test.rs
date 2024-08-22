@@ -513,7 +513,7 @@ Execution failed. Failure reason: 0x496e76616c6964207363656e6172696f ('Invalid s
     // Clean pc locations from the trace.
     let re = Regex::new(r"pc=0:[0-9]+").unwrap();
     let cleaned_expected_error = &re.replace_all(&expected_error, "pc=0:*");
-    let actual_error = account_tx.execute(state, block_context, true, true).unwrap_err();
+    let actual_error = account_tx.execute(state, block_context, true, true, true).unwrap_err();
     let actual_error_str = actual_error.to_string();
     let cleaned_actual_error = &re.replace_all(&actual_error_str, "pc=0:*");
     // Compare actual trace to the expected trace (sans pc locations).
@@ -576,7 +576,7 @@ An ASSERT_EQ instruction failed: 1 != 0.
     };
 
     // Compare expected and actual error.
-    let error = deploy_account_tx.execute(state, &block_context, true, true).unwrap_err();
+    let error = deploy_account_tx.execute(state, &block_context, true, true, true).unwrap_err();
     assert_eq!(error.to_string(), expected_error);
 }
 
@@ -708,7 +708,10 @@ Execution failed. Failure reason: 0x496e76616c6964207363656e6172696f ('Invalid s
     };
 
     // Compare expected and actual error.
-    let error =
-        invoke_deploy_tx.execute(state, &block_context, true, true).unwrap().revert_error.unwrap();
+    let error = invoke_deploy_tx
+        .execute(state, &block_context, true, true, true)
+        .unwrap()
+        .revert_error
+        .unwrap();
     assert_eq!(error.to_string(), expected_error);
 }

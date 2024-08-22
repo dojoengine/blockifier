@@ -46,6 +46,15 @@ pub struct ExecutionFlags {
     pub charge_fee: bool,
     pub validate: bool,
     pub concurrency_mode: bool,
+    /// Whether to validate the transaction nonce.
+    ///
+    /// If `true` and tx nonce != the current nonce, the transaction will be rejected. If
+    /// `false`, the transaction will be accepted if tx nonce >= the current nonce.
+    ///
+    /// This flag mainly used in
+    /// `ExecutableTransaction::execute_raw()` of
+    /// [AccountTransaction](crate::transaction::account_transaction::AccountTransaction::execute_raw).
+    pub nonce_check: bool,
 }
 
 pub trait ExecutableTransaction<U: UpdatableState>: Sized {
@@ -57,10 +66,12 @@ pub trait ExecutableTransaction<U: UpdatableState>: Sized {
         block_context: &BlockContext,
         charge_fee: bool,
         validate: bool,
+        nonce_check: bool,
     ) -> TransactionExecutionResult<TransactionExecutionInfo> {
         log::debug!("Executing Transaction...");
         let mut transactional_state = TransactionalState::create_transactional(state);
-        let execution_flags = ExecutionFlags { charge_fee, validate, concurrency_mode: false };
+        let execution_flags =
+            ExecutionFlags { charge_fee, validate, nonce_check, concurrency_mode: false };
         let execution_result =
             self.execute_raw(&mut transactional_state, block_context, execution_flags);
 
