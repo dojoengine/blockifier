@@ -66,7 +66,7 @@ fn test_transaction_validator(
     // Test the stateful validator.
     let mut stateful_validator = StatefulValidator::create(state, block_context);
 
-    let result = stateful_validator.perform_validations(tx, false);
+    let result = stateful_validator.perform_validations(tx, false, false);
     assert!(result.is_ok(), "Validation failed: {:?}", result.unwrap_err());
 }
 
@@ -89,6 +89,6 @@ fn test_transaction_validator_skip_validate() {
 
     let mut stateful_validator = StatefulValidator::create(state, block_context);
     // The transaction validations should be skipped and the function should return Ok.
-    let result = stateful_validator.perform_validations(tx, true);
+    let result = stateful_validator.perform_validations(tx, true, false);
     assert_matches!(result, Ok(()));
 }
