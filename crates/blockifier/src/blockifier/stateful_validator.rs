@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
-use starknet_api::core::Nonce;
+use starknet_api::core::{ContractAddress, Nonce};
 use starknet_api::transaction::TransactionHash;
 use starknet_types_core::felt::Felt;
 use thiserror::Error;
@@ -43,7 +43,7 @@ pub type StatefulValidatorResult<T> = Result<T, StatefulValidatorError>;
 
 /// Manages state related transaction validations for pre-execution flows.
 pub struct StatefulValidator<S: StateReader> {
-    tx_executor: TransactionExecutor<S>,
+    pub tx_executor: TransactionExecutor<S>,
     max_nonce_for_validation_skip: Nonce,
 }
 
@@ -207,5 +207,17 @@ impl<S: StateReader> StatefulValidator<S> {
         )?;
 
         Ok((validate_call_info, tx_receipt))
+    }
+
+    pub fn get_nonce(
+        &mut self,
+        account_address: ContractAddress,
+    ) -> StatefulValidatorResult<Nonce> {
+        Ok(self
+            .tx_executor
+            .block_state
+            .as_ref()
+            .expect(BLOCK_STATE_ACCESS_ERR)
+            .get_nonce_at(account_address)?)
     }
 }
