@@ -104,7 +104,7 @@ impl<S: StateReader> StatefulValidator<S> {
                 self.validate(&tx, versioned_constants.tx_initial_gas())?;
 
             // Post validations.
-            PostValidationReport::verify(&tx_context, &actual_cost)?;
+            // PostValidationReport::verify(&tx_context, &actual_cost)?;
         }
 
         // See similar comment in `run_revertible` for context.
