@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::sync::Arc;
 
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
@@ -13,7 +15,7 @@ use crate::blockifier::transaction_executor::{
 use crate::context::{BlockContext, TransactionContext};
 use crate::execution::call_info::CallInfo;
 use crate::fee::actual_cost::TransactionReceipt;
-use crate::fee::fee_checks::PostValidationReport;
+// use crate::fee::fee_checks::PostValidationReport;
 use crate::state::cached_state::CachedState;
 use crate::state::errors::StateError;
 use crate::state::state_api::{State, StateReader};
@@ -76,7 +78,7 @@ impl<S: StateReader> StatefulValidator<S> {
     pub fn perform_validations(
         &mut self,
         tx: AccountTransaction,
-        deploy_account_tx_hash: Option<TransactionHash>,
+        skip_validate: bool,
         skip_fee_check: bool,
     ) -> StatefulValidatorResult<()> {
         // Deploy account transactions should be fully executed, since the constructor must run
@@ -91,16 +93,16 @@ impl<S: StateReader> StatefulValidator<S> {
         // processed. It is done before the pre-validations checks because, in these checks, we
         // change the state (more precisely, we increment the nonce).
         let tx_context = self.tx_executor.block_context.to_tx_context(&tx);
-        let skip_validate = self.skip_validate_due_to_unprocessed_deploy_account(
-            &tx_context.tx_info,
-            deploy_account_tx_hash,
-        )?;
+        // let skip_validate = self.skip_validate_due_to_unprocessed_deploy_account(
+        //     &tx_context.tx_info,
+        //     deploy_account_tx_hash,
+        // )?;
         self.perform_pre_validation_stage(&tx, &tx_context, !skip_fee_check)?;
 
         if !skip_validate {
             // `__validate__` call.
             let versioned_constants = &tx_context.block_context.versioned_constants();
-            let (_optional_call_info, actual_cost) =
+            let (_optional_call_info, _actual_cost) =
                 self.validate(&tx, versioned_constants.tx_initial_gas())?;
 
             // Post validations.
