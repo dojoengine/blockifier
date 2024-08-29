@@ -15,13 +15,13 @@ use crate::blockifier::transaction_executor::{
 use crate::context::{BlockContext, TransactionContext};
 use crate::execution::call_info::CallInfo;
 use crate::fee::actual_cost::TransactionReceipt;
-// use crate::fee::fee_checks::PostValidationReport;
+use crate::fee::fee_checks::PostValidationReport;
 use crate::state::cached_state::CachedState;
 use crate::state::errors::StateError;
 use crate::state::state_api::{State, StateReader};
 use crate::transaction::account_transaction::AccountTransaction;
 use crate::transaction::errors::{TransactionExecutionError, TransactionPreValidationError};
-use crate::transaction::objects::TransactionInfo;
+use crate::transaction::objects::{TransactionExecutionResult, TransactionInfo};
 use crate::transaction::transaction_execution::Transaction;
 use crate::transaction::transactions::ValidatableTransaction;
 
@@ -102,11 +102,11 @@ impl<S: StateReader> StatefulValidator<S> {
         if !skip_validate {
             // `__validate__` call.
             let versioned_constants = &tx_context.block_context.versioned_constants();
-            let (_optional_call_info, _actual_cost) =
+            let (_optional_call_info, actual_cost) =
                 self.validate(&tx, versioned_constants.tx_initial_gas())?;
 
             // Post validations.
-            // PostValidationReport::verify(&tx_context, &actual_cost)?;
+            PostValidationReport::verify(&tx_context, &actual_cost)?;
         }
 
         // See similar comment in `run_revertible` for context.
