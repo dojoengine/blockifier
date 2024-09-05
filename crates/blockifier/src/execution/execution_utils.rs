@@ -152,6 +152,7 @@ pub struct ReadOnlySegment {
 pub struct ReadOnlySegments(Vec<ReadOnlySegment>);
 
 impl ReadOnlySegments {
+    #[allow(clippy::ptr_arg)]
     pub fn allocate(
         &mut self,
         vm: &mut VirtualMachine,

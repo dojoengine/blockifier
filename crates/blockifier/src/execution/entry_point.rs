@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::sync::Arc;
 
 use cairo_vm::vm::runners::cairo_runner::{ExecutionResources, ResourceTracker, RunResources};
-use num_traits::{Inv, Zero};
+use num_traits::{Inv, ToPrimitive, Zero};
 use serde::Serialize;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector};
 use starknet_api::deprecated_contract_class::EntryPointType;
@@ -173,10 +173,10 @@ impl EntryPointExecutionContext {
             // TODO(Ori, 1/2/2024): Write an indicative expect message explaining why the conversion
             // works.
             ExecutionMode::Validate => {
-                block_context.versioned_constants.validate_max_n_steps as usize
+                block_context.versioned_constants.validate_max_n_steps.to_usize().unwrap()
             }
             ExecutionMode::Execute => {
-                block_context.versioned_constants.invoke_tx_max_n_steps as usize
+                block_context.versioned_constants.invoke_tx_max_n_steps.to_usize().unwrap()
             }
         };
 

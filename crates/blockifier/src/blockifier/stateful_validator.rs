@@ -1,7 +1,9 @@
+#![allow(unused)]
+
 use std::sync::Arc;
 
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
-use starknet_api::core::Nonce;
+use starknet_api::core::{ContractAddress, Nonce};
 use starknet_api::transaction::TransactionHash;
 use starknet_types_core::felt::Felt;
 use thiserror::Error;
@@ -16,10 +18,10 @@ use crate::fee::actual_cost::TransactionReceipt;
 use crate::fee::fee_checks::PostValidationReport;
 use crate::state::cached_state::CachedState;
 use crate::state::errors::StateError;
-use crate::state::state_api::StateReader;
+use crate::state::state_api::{State, StateReader};
 use crate::transaction::account_transaction::AccountTransaction;
 use crate::transaction::errors::{TransactionExecutionError, TransactionPreValidationError};
-use crate::transaction::objects::TransactionInfo;
+use crate::transaction::objects::{TransactionExecutionResult, TransactionInfo};
 use crate::transaction::transaction_execution::Transaction;
 use crate::transaction::transactions::ValidatableTransaction;
 
@@ -43,7 +45,7 @@ pub type StatefulValidatorResult<T> = Result<T, StatefulValidatorError>;
 
 /// Manages state related transaction validations for pre-execution flows.
 pub struct StatefulValidator<S: StateReader> {
-    tx_executor: TransactionExecutor<S>,
+    pub tx_executor: TransactionExecutor<S>,
     max_nonce_for_validation_skip: Nonce,
 }
 
@@ -58,10 +60,26 @@ impl<S: StateReader> StatefulValidator<S> {
         Self { tx_executor, max_nonce_for_validation_skip }
     }
 
+    /// Perform validations on an account transaction.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx` - The account transaction to validate.
+    /// * `skip_validate` - If true, skip the account validation.
+    /// * `skip_fee_check` - If true, ignore any fee related checks on the transaction and account
+    ///   balance.
+    ///
+    /// NOTE:
+    ///
+    /// We add a flag specifically for avoiding fee checks to allow the pool validator
+    /// in Katana to run in 'fee disabled' mode. Basically, to adapt StatefulValidator to Katana's
+    /// execution flag abstraction (Katana's config that allows running in fee-disabled or
+    /// no-validation mode).
     pub fn perform_validations(
         &mut self,
         tx: AccountTransaction,
-        deploy_account_tx_hash: Option<TransactionHash>,
+        skip_validate: bool,
+        skip_fee_check: bool,
     ) -> StatefulValidatorResult<()> {
         // Deploy account transactions should be fully executed, since the constructor must run
         // before `__validate_deploy__`. The execution already includes all necessary validations,
@@ -75,23 +93,34 @@ impl<S: StateReader> StatefulValidator<S> {
         // processed. It is done before the pre-validations checks because, in these checks, we
         // change the state (more precisely, we increment the nonce).
         let tx_context = self.tx_executor.block_context.to_tx_context(&tx);
-        let skip_validate = self.skip_validate_due_to_unprocessed_deploy_account(
-            &tx_context.tx_info,
-            deploy_account_tx_hash,
-        )?;
-        self.perform_pre_validation_stage(&tx, &tx_context)?;
+        // let skip_validate = self.skip_validate_due_to_unprocessed_deploy_account(
+        //     &tx_context.tx_info,
+        //     deploy_account_tx_hash,
+        // )?;
+        self.perform_pre_validation_stage(&tx, &tx_context, !skip_fee_check)?;
 
-        if skip_validate {
-            return Ok(());
+        if !skip_validate {
+            // `__validate__` call.
+            let versioned_constants = &tx_context.block_context.versioned_constants();
+            let (_optional_call_info, actual_cost) =
+                self.validate(&tx, versioned_constants.tx_initial_gas())?;
+
+            // Post validations.
+            PostValidationReport::verify(&tx_context, &actual_cost)?;
         }
 
-        // `__validate__` call.
-        let versioned_constants = &tx_context.block_context.versioned_constants();
-        let (_optional_call_info, actual_cost) =
-            self.validate(&tx, versioned_constants.tx_initial_gas())?;
-
-        // Post validations.
-        PostValidationReport::verify(&tx_context, &actual_cost)?;
+        // See similar comment in `run_revertible` for context.
+        //
+        // From what I've seen there is not suitable method that is used by both the validator and
+        // the normal transaction flow where the nonce increment logic can be placed. So
+        // this is manually placed here.
+        //
+        // TODO: find a better place to put this without needing this duplication.
+        self.tx_executor
+            .block_state
+            .as_mut()
+            .expect(BLOCK_STATE_ACCESS_ERR)
+            .increment_nonce(tx_context.tx_info.sender_address())?;
 
         Ok(())
     }
@@ -105,14 +134,14 @@ impl<S: StateReader> StatefulValidator<S> {
         &mut self,
         tx: &AccountTransaction,
         tx_context: &TransactionContext,
+        fee_check: bool,
     ) -> StatefulValidatorResult<()> {
         let strict_nonce_check = false;
         // Run pre-validation in charge fee mode to perform fee and balance related checks.
-        let charge_fee = true;
         tx.perform_pre_validation_stage(
             self.tx_executor.block_state.as_mut().expect(BLOCK_STATE_ACCESS_ERR),
             tx_context,
-            charge_fee,
+            fee_check,
             strict_nonce_check,
         )?;
 
@@ -180,5 +209,17 @@ impl<S: StateReader> StatefulValidator<S> {
         )?;
 
         Ok((validate_call_info, tx_receipt))
+    }
+
+    pub fn get_nonce(
+        &mut self,
+        account_address: ContractAddress,
+    ) -> StatefulValidatorResult<Nonce> {
+        Ok(self
+            .tx_executor
+            .block_state
+            .as_ref()
+            .expect(BLOCK_STATE_ACCESS_ERR)
+            .get_nonce_at(account_address)?)
     }
 }

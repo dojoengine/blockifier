@@ -1015,6 +1015,15 @@ fn test_invalid_nonce(
         .perform_pre_validation_stage(&mut transactional_state, &valid_tx_context, false, false)
         .unwrap();
 
+    // See comments on changing where nonce is incremented in `ExecutableTransaction::execute_raw`
+    // of AccountTransaction.
+    //
+    // Basically, before this, the nonce is incremented in `perform_pre_validation_stage` but that
+    // method is called even before the account validation stage is executed. So, now we have to
+    // increment the sender's account nonce manually here.
+    let account = valid_tx_context.tx_info.sender_address();
+    transactional_state.increment_nonce(account).expect("failed to increment nonce");
+
     // Negative flow: account nonce = 1, incoming tx nonce = 0.
     let invalid_nonce = nonce!(0_u8);
     let invalid_tx =
@@ -1063,12 +1072,18 @@ fn declare_expected_state_changes_count(version: TransactionVersion) -> StateCha
     if version == TransactionVersion::ZERO {
         StateChangesCount {
             n_storage_updates: 1, // Sender balance.
+            // Supposed to be ZERO, but because due to the changes made for supporting declaring
+            // Cairo 0 contracts, `n_compiled_class_hash_updates` is 1 for V0 declare transactions.
+            n_compiled_class_hash_updates: 1, // Also set compiled class hash.
             ..StateChangesCount::default()
         }
     } else if version == TransactionVersion::ONE {
         StateChangesCount {
             n_storage_updates: 1,    // Sender balance.
             n_modified_contracts: 1, // Nonce.
+            // Supposed to be ZERO, but because due to the changes made for supporting declaring
+            // Cairo 0 contracts, `n_compiled_class_hash_updates` is 1 for V0 declare transactions.
+            n_compiled_class_hash_updates: 1, // Also set compiled class hash.
             ..StateChangesCount::default()
         }
     } else if version == TransactionVersion::TWO || version == TransactionVersion::THREE {
