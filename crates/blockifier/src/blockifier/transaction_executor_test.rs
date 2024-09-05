@@ -56,7 +56,10 @@ fn tx_executor_test_body<S: StateReader>(
     TransactionVersion::ZERO,
     CairoVersion::Cairo0,
     BouncerWeights {
-        state_diff_size: 0,
+	    // The state diff size is 2 because to support declaring Cairo0 contracts, we
+		// need to include the compiled class hash and declared contracts of the Cairo
+		// 0 contract in the state diff.
+        state_diff_size: 2,
         message_segment_length: 0,
         n_events: 0,
         ..Default::default()
@@ -66,7 +69,7 @@ fn tx_executor_test_body<S: StateReader>(
     TransactionVersion::ONE,
     CairoVersion::Cairo0,
     BouncerWeights {
-        state_diff_size: 2,
+        state_diff_size: 4,
         message_segment_length: 0,
         n_events: 0,
         ..Default::default()
