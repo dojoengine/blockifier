@@ -1072,6 +1072,9 @@ fn declare_expected_state_changes_count(version: TransactionVersion) -> StateCha
     if version == TransactionVersion::ZERO {
         StateChangesCount {
             n_storage_updates: 1, // Sender balance.
+            // Supposed to be ZERO, but because due to the changes made for supporting declaring
+            // Cairo 0 contracts, `n_compiled_class_hash_updates` is 1 for V0 declare transactions.
+            n_compiled_class_hash_updates: 1, // Also set compiled class hash.
             ..StateChangesCount::default()
         }
     } else if version == TransactionVersion::ONE {

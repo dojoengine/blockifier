@@ -431,10 +431,15 @@ impl AccountTransaction {
         let execute_call_info: Option<CallInfo>;
 
         if matches!(self, Self::DeployAccount(_)) {
-            // See similar comment in `run_revertible` for context.
+            // See similar comment in `run_revertible` for context. Not sure for this case if
+            // incrementing the nonce at this stage is correct.
             //
-            // Not sure for this case if incrementing the nonce at this stage is correct.
-            state.increment_nonce(tx_context.tx_info.sender_address())?;
+            // Only increment the nonce if it's not V0 transaction. Why? not exactly sure but
+            // that's what the tests implies.
+            if !tx_context.tx_info.is_v0() {
+                // See similar comment in `run_revertible` for context.
+                state.increment_nonce(tx_context.tx_info.sender_address())?;
+            }
 
             // Handle `DeployAccount` transactions separately, due to different order of things.
             // Also, the execution context required form the `DeployAccount` execute phase is
@@ -463,8 +468,12 @@ impl AccountTransaction {
                 charge_fee,
             )?;
 
-            // See similar comment in `run_revertible` for context.
-            state.increment_nonce(tx_context.tx_info.sender_address())?;
+            // Only increment the nonce if it's not V0 transaction. Why? not exactly sure but
+            // that's what the tests implies.
+            if !execution_context.tx_context.tx_info.is_v0() {
+                // See similar comment in `run_revertible` for context.
+                state.increment_nonce(tx_context.tx_info.sender_address())?;
+            }
 
             execute_call_info =
                 self.run_execute(state, &mut resources, &mut execution_context, remaining_gas)?;
@@ -520,9 +529,14 @@ impl AccountTransaction {
         // called at the initial stage of transaction processing (ie in
         // ExecutableTransaction::execute_raw of AccountTransaction), which is even before the
         // account validation logic is being run. Which is weird because the nonce would get
-        // incremented even if the transaction failed validation. And this is not what I observed
-        // from mainnet/testnet. So, I moved the nonce incrementation here.
-        state.increment_nonce(tx_context.tx_info.sender_address())?;
+        // incremented even if the transaction failed validation. And this is not what I
+        // observed from mainnet/testnet. So, I moved the nonce incrementation here.
+        //
+        // Only increment the nonce if it's not V0 transaction. Why? not exactly sure but
+        // that's what the tests implies.
+        if !execution_context.tx_context.tx_info.is_v0() {
+            state.increment_nonce(tx_context.tx_info.sender_address())?;
+        }
 
         let n_allotted_execution_steps = execution_context.subtract_validation_and_overhead_steps(
             &validate_call_info,
